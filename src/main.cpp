@@ -7,14 +7,10 @@ This software is developed for the LilyGo t-can485 ESP32 microcontroller, its pu
 #include <driver/twai.h>
 #include <Arduino.h>
 
-// Define the CAN bus parameters
-constexpr bool Mode1 = true; // Test close contactor mode 1 if this is not working test mode 2
-constexpr bool Mode2 = false; // Test close contactor mode 2 if this is not working test mode 1
+// This variable sets the mode for sending CAN bus messages. If Mode1 is true, it will use sendingCANbusV1_task(), and if false, it will use sendingCANbusV2_task().
+constexpr bool Mode1 = true;
 
-
-// Leave this when using  esp32
-constexpr bool Debug = true;
-constexpr bool CANbus = true;
+// These lines define the GPIO pins used for CAN bus communication and other purposes
 #define CAN_TX_GPIO  GPIO_NUM_27
 #define CAN_RX_GPIO  GPIO_NUM_26
 #define CAN_SE_GPIO  GPIO_NUM_23
@@ -60,7 +56,7 @@ void setupCANbus()
 	}
 }
 
-// Function for debug
+// This function converts a buffer of bytes into a hexadecimal string for debugging purposes
 String bufferToString(String text, const uint8_t* buffer)
 {
 	char data[64]{};
@@ -70,11 +66,12 @@ String bufferToString(String text, const uint8_t* buffer)
 	return text;
 }
 
-// Function to send CANbus message
+// This function sends a CAN bus message with the specified identifier, data buffer, data length, and whether it uses a 29-bit identifier. It also logs any errors.
 void send_CANbus_message(const uint32_t identifier, const uint8_t* buffer, const uint8_t length,
                          const bool id29bits = false)
 {
 	twai_message_t message;
+	String logmessage = "";
 	message.data_length_code = length;
 	String text = "";
 	if (id29bits)
@@ -91,74 +88,68 @@ void send_CANbus_message(const uint32_t identifier, const uint8_t* buffer, const
 	if (length > 0 && buffer != nullptr)
 	{
 		memcpy(message.data, buffer, length);
+		logmessage = bufferToString(text, buffer);
 	}
 
 	const esp_err_t error = twai_transmit(&message, pdMS_TO_TICKS(250));
 
 	if (error != ESP_OK)
 	{
-		ESP_LOGE("CANbus", "Failed to send message ID:%08x, Error Code: %d", identifier, error);
-		text = "Message::";
-		text += "\t\n";
-		Serial.println(bufferToString(text, buffer));
-		Serial.println(length);
-		if (Debug)
+		ESP_LOGE("CANbus", "Failed to send message ID:%08x, Error Code: %d Message:%s\n", identifier, error,
+		         logmessage.c_str());
+		uint32_t alerts = 0;
+		if (error == ESP_ERR_INVALID_ARG)
 		{
-			uint32_t alerts = 0;
-			if (error == ESP_ERR_INVALID_ARG)
-			{
-				ESP_LOGE("CANbus", "ESP_ERR_INVALID_ARG");
-			}
-			else if (error == ESP_ERR_TIMEOUT)
-			{
-				ESP_LOGE("CANbus", "ESP_ERR_TIMEOUT");
-			}
-			else if (error == ESP_ERR_INVALID_STATE)
-			{
-				ESP_LOGE("CANbus", "ESP_ERR_INVALID_STATE");
-			}
-			else if (error == ESP_ERR_NOT_SUPPORTED)
-			{
-				ESP_LOGE("CANbus", "ESP_ERR_NOT_SUPPORTED  only read");
-			}
-			else
-			{
-				twai_read_alerts(&alerts, pdMS_TO_TICKS(100));
-			}
-			Serial.printf("ID:%08x  error::%d   ALERTS:%d\n", identifier, error, alerts);
+			ESP_LOGE("CANbus", "ESP_ERR_INVALID_ARG");
 		}
+		else if (error == ESP_ERR_TIMEOUT)
+		{
+			ESP_LOGE("CANbus", "ESP_ERR_TIMEOUT");
+		}
+		else if (error == ESP_ERR_INVALID_STATE)
+		{
+			ESP_LOGE("CANbus", "ESP_ERR_INVALID_STATE");
+		}
+		else if (error == ESP_ERR_NOT_SUPPORTED)
+		{
+			ESP_LOGE("CANbus", "ESP_ERR_NOT_SUPPORTED  only read");
+		}
+		else
+		{
+			twai_read_alerts(&alerts, pdMS_TO_TICKS(100));
+		}
+		Serial.printf("ID:%08x  Error Code:%d  ALERTS:%d  Message:%s\n", identifier, error, alerts, logmessage.c_str());
+		String myString = "Hello, World!";
 	}
 }
 
 // Function to hold the different messages you send
-void sendingCANbus_task()
+void sendingCANbusV1_task()
 {
 	const uint8_t message1_data[] = {0x41, 0x11, 0x01, 0x00, 0x00, 0x00, 0x20, 0x96};
 	const uint8_t message2_data[] = {0x61, 0x15, 0x01, 0x00, 0x00, 0x00, 0x20, 0xBA};
-	const uint8_t message3_data[] = {0x40, 0x41, 0x05, 0x15, 0x00, 0x50, 0x71, 0x7f};
-	const uint8_t message4_data[] = {0x60, 0x55, 0x55, 0x15, 0x54, 0x51, 0xd1, 0xb8};
-	while (true)
-	{
-		if (Mode1)
-		{
-			send_CANbus_message(0x221, message1_data, 8, false);
-			delay(30); // 30ms delay
-			send_CANbus_message(0x221, message2_data, 8, false);
-			delay(30); // 30ms delay
-		}
-		if (Mode2)
-		{
-			send_CANbus_message(0x221, message3_data, 8, false);
-			delay(30); // 30ms delay
-			send_CANbus_message(0x221, message4_data, 8, false);
-			delay(30); // 30ms delay
-		}
-	}
+
+	send_CANbus_message(0x221, message1_data, 8, false);
+	delay(30); // 30ms delay
+	send_CANbus_message(0x221, message2_data, 8, false);
+	delay(30); // 30ms delay
+}
+
+void sendingCANbusV2_task()
+{
+	const uint8_t message1_data[] = {0x40, 0x41, 0x05, 0x15, 0x00, 0x50, 0x71, 0x7f};
+	const uint8_t message2_data[] = {0x60, 0x55, 0x55, 0x15, 0x54, 0x51, 0xd1, 0xb8};
+
+	send_CANbus_message(0x221, message1_data, 8, false);
+	delay(30); // 30ms delay
+	send_CANbus_message(0x221, message2_data, 8, false);
+	delay(30); // 30ms delay
 }
 
 void setup()
 {
 	Serial.begin(115200);
+	// Configures the IO pins.
 	setupPines();
 
 	// Activate CANbus Communication
@@ -170,5 +161,12 @@ void setup()
 void loop()
 {
 	// The main call function
-	sendingCANbus_task();
+	if (Mode1)
+	{
+		sendingCANbusV1_task();
+	}
+	else
+	{
+		sendingCANbusV2_task();
+	}
 }
