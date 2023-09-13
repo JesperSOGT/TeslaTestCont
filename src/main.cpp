@@ -7,8 +7,9 @@ This software is developed for the LilyGo t-can485 ESP32 microcontroller, its pu
 #include <driver/twai.h>
 #include <Arduino.h>
 
+//..........................USER INPUT FOR MODE SELECT.........................
 // This variable sets the mode for sending CAN bus messages. If Mode1 is true, it will use sendingCANbusV1_task(), and if false, it will use sendingCANbusV2_task().
-constexpr bool Mode1 = true;
+constexpr bool ModeSelect = true;
 
 // These lines define the GPIO pins used for CAN bus communication and other purposes
 #define CAN_TX_GPIO  GPIO_NUM_27
@@ -161,7 +162,7 @@ void setup()
 void loop()
 {
 	// The main call function
-	if (Mode1)
+	if (ModeSelect)
 	{
 		sendingCANbusV1_task();
 	}
