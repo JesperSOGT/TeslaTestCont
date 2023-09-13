@@ -8,12 +8,13 @@ This software is developed for the LilyGo t-can485 ESP32 microcontroller, its pu
 #include <Arduino.h>
 
 // Define the CAN bus parameters
-constexpr bool CANbus = true;
 constexpr bool Mode1 = true; // Test close contactor mode 1 if this is not working test mode 2
-constexpr bool Mode2 = true; // Test close contactor mode 2 if this is not working test mode 1
-constexpr bool Debug = true;
+constexpr bool Mode2 = false; // Test close contactor mode 2 if this is not working test mode 1
+
 
 // Leave this when using  esp32
+constexpr bool Debug = true;
+constexpr bool CANbus = true;
 #define CAN_TX_GPIO  GPIO_NUM_27
 #define CAN_RX_GPIO  GPIO_NUM_26
 #define CAN_SE_GPIO  GPIO_NUM_23
